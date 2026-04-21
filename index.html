@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoScene 事件数据地图展示</title>
+    <!-- ArcGIS API 样式 -->
+    <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css">
+    <!-- ArcGIS API 核心库 -->
+    <script src="https://js.arcgis.com/4.32/"></script>
+    <style>
+        /* 关键：给 html/body 设置高度，确保地图容器能继承 */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        /* 1. 页眉区域 - 绿色背景 */
+        #header {
+            height: 60px;
+            background-color: #28a745;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* 2. 主体布局：底图库(左) + 地图(右) */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 60px);
+            width: 100%;
+        }
+
+        /* 底图库区域 - 放在左侧 */
+        #basemapGallery {
+            flex: 1;
+            background-color: #f5f7fa;
+            padding: 10px;
+            border-right: 2px solid #eee;
+            overflow-y: auto;
+        }
+
+        /* 地图容器 - 放在右侧 */
+        #viewDiv {
+            flex: 3;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* 调试信息样式 */
+        #debugInfo {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255,255,255,0.9);
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+    <!-- 页眉 -->
+    <div id="header">GeoScene 北京摊位地图展示</div>
+
+    <!-- 调试信息 -->
+    <div id="debugInfo">加载中...</div>
+
+    <!-- 主体区域：左=底图库，右=地图 -->
+    <div class="main-container">
+        <div id="basemapGallery"></div>
+        <div id="viewDiv"></div>
+    </div>
+
+    <script>
+        require([
+            "esri/Map",
+            "esri/views/MapView",
+            "esri/layers/FeatureLayer",
+            "esri/widgets/BasemapGallery",
+            "esri/widgets/ScaleBar",
+            "esri/widgets/Legend",
+            "esri/widgets/Search",
+            "esri/widgets/LayerList"
+        ], function(
+            Map, MapView, FeatureLayer,
+            BasemapGallery, ScaleBar, Legend, Search, LayerList
+        ) {
+            const debugEl = document.getElementById("debugInfo");
+            debugEl.innerText = "API 加载成功，初始化地图...";
+
+            // 1. 创建地图
+            const map = new Map({
+                basemap: "osm"
+            });
+
+            // 2. 初始化地图视图
+            const view = new MapView({
+                container: "viewDiv",
+                map: map,
+                center: [116.3972, 39.9075],
+                zoom: 12
+            });
+
+            // 3. 加载摊位图层
+            const customLayer = new FeatureLayer({
+                url: "https://www.geosceneonline.cn/server/rest/services/Hosted/北京摆摊地点/FeatureServer/0",
+                title: "北京摊位数据"
+            });
+            map.add(customLayer);
+
+            // 监听图层加载状态
+            customLayer.when(() => {
+                debugEl.innerText = "图层加载成功！";
+            }).catch(err => {
+                debugEl.innerText = "图层加载失败：" + err.message;
+                console.error("图层错误：", err);
+            });
+
+            // 视图加载完成
+            view.when(() => {
+                debugEl.innerText = "地图加载成功！";
+
+                // 左侧底图库（已移到页面左边）
+                const basemapGallery = new BasemapGallery({
+                    view: view,
+                    container: "basemapGallery"
+                });
+
+                // 所有微件保持在左侧
+                // 图层列表
+                const layerList = new LayerList({ view: view });
+                view.ui.add(layerList, "top-left");
+
+                // 搜索框
+                const search = new Search({ view: view });
+                view.ui.add(search, "top-left");
+
+                // 比例尺
+                const scaleBar = new ScaleBar({ view: view });
+                view.ui.add(scaleBar, "bottom-left");
+
+                // 图例
+                const legend = new Legend({ view: view });
+                view.ui.add(legend, "bottom-left");
+
+            }).catch(err => {
+                debugEl.innerText = "地图视图加载失败：" + err.message;
+                console.error("视图错误：", err);
+            });
+        });
+    </script>
+</body>
+</html>
